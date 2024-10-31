@@ -151,15 +151,15 @@ CPUQuota=400%
 WantedBy=multi-user.target
 EOF
 
-useradd -m monerodaemon -d /home/monerodaemon
+useradd -m monerodaemon -d /home/pool/monerodaemon
 systemctl daemon-reload
 systemctl enable monero
 systemctl start monero
 
 sleep 30
 echo "Please wait until Monero daemon is fully synced"
-tail -f /home/monerodaemon/.bitmonero/bitmonero.log 2>/dev/null | grep Synced &
-( tail -F -n0 /home/monerodaemon/.bitmonero/bitmonero.log & ) | egrep -q "You are now synchronized with the network"
+tail -f /home/pool/monerodaemon/.bitmonero/bitmonero.log 2>/dev/null | grep Synced &
+( tail -F -n0 /home/pool/monerodaemon/.bitmonero/bitmonero.log & ) | egrep -q "You are now synchronized with the network"
 killall tail 2>/dev/null
 echo "Monero daemon is synced"
 
@@ -189,7 +189,7 @@ git clone https://github.com/MoneroOcean/nodejs-pool.git
 cd /home/pool/nodejs-pool
 JOBS=$(nproc) npm install
 # install lmdb tools
-( cd /home/user
+( cd /home/pool
   rm -rf node-lmdb
   git clone https://github.com/Venemo/node-lmdb.git
   cd node-lmdb
@@ -198,7 +198,7 @@ JOBS=$(nproc) npm install
   make -j $(nproc)
   mkdir /home/pool/.bin
   echo >>/home/pool/.bashrc
-  echo 'export PATH=/home/pool/.bin:$PATH' >>/home/user/.bashrc
+  echo 'export PATH=/home/pool/.bin:$PATH' >>/home/pool/.bashrc
   for i in mdb_copy mdb_dump mdb_load mdb_stat; do cp \$i /home/pool/.bin/; done
 )
 npm install -g pm2
@@ -212,7 +212,7 @@ mysql -u root --password=$ROOT_SQL_PASS -e "INSERT INTO pool.config (module, ite
 mysql -u root --password=$ROOT_SQL_PASS -e "UPDATE pool.config SET item_value = '$(cat /home/pool/wallets/wallet.address.txt)' WHERE module = 'pool' and item = 'address';"
 mysql -u root --password=$ROOT_SQL_PASS -e "UPDATE pool.config SET item_value = '$(cat /home/pool/wallets/wallet_fee.address.txt)' WHERE module = 'payout' and item = 'feeAddress';"
 pm2 start init.js --name=api --log-date-format="YYYY-MM-DD HH:mm Z" -- --module=api
-pm2 start /usr/local/src/monero/build/release/bin/monero-wallet-rpc -- --rpc-bind-port 18082 --password-file /home/pool/wallets/wallet_pass --wallet-file /home/user/wallets/wallet --trusted-daemon --disable-rpc-login
+pm2 start /usr/local/src/monero/build/release/bin/monero-wallet-rpc -- --rpc-bind-port 18082 --password-file /home/pool/wallets/wallet_pass --wallet-file /home/pool/wallets/wallet --trusted-daemon --disable-rpc-login
 sleep 30
 pm2 start init.js --name=blockManager --kill-timeout 10000 --log-date-format="YYYY-MM-DD HH:mm:ss:SSS Z"  -- --module=blockManager
 pm2 start init.js --name=worker --kill-timeout 10000 --log-date-format="YYYY-MM-DD HH:mm:ss:SSS Z" --node-args="--max_old_space_size=8192" -- --module=worker
@@ -223,7 +223,7 @@ pm2 start init.js --name=longRunner --kill-timeout 10000 --log-date-format="YYYY
 sleep 20
 pm2 start init.js --name=pool_stats --kill-timeout 10000 --log-date-format="YYYY-MM-DD HH:mm:ss:SSS Z" -- --module=pool_stats
 pm2 save
-sudo env PATH=$PATH:/home/pool/.nvm/versions/node/$NODEJS_VERSION/bin /home/pool/.nvm/versions/node/$NODEJS_VERSION/lib/node_modules/pm2/bin/pm2 startup systemd -u user --hp /home/pool
+sudo env PATH=$PATH:/home/pool/.nvm/versions/node/$NODEJS_VERSION/bin /home/pool/.nvm/versions/node/$NODEJS_VERSION/lib/node_modules/pm2/bin/pm2 startup systemd -u pool --hp /home/pool
 cd /home/pool
 git clone https://github.com/MoneroOcean/moneroocean-gui.git
 cd moneroocean-gui
